@@ -190,9 +190,21 @@ def measpk(galgrid,wingridgal,densgrid,wingriddens,nx,ny,nz,lx,ly,lz,x0,y0,z0,km
     print '{:5.3f}'.format(kbin[ik]),'{:8.1f}'.format(pk4cross[ik]),'{:8.1f}'.format(pk4flatcross[ik]),'{:8.1f}'.format(pk4errcross[ik]),'{:8.1f}'.format(pk4errcross[ik]),'{:8.1f}'.format(pk4modcross[ik]),'{:8.1f}'.format(pk4concross[ik]),'{:8.1f}'.format(pk4flatconcross[ik])
 
 ########################################################################
-# Write out power spectra.                                             #
+# Plot power spectra.                                                  #
 ########################################################################
 
-  pkfile = 'pkpolecross.dat'
-  pktools.writepolecross(pkfile,kmin,kmax,nkbin,ngal,0,nx,ny,nz,pk0gal,pk2gal,pk4gal,pk0dens,pk2dens,pk4dens,pk0cross,pk2cross,pk4cross,pk0errgal,pk2errgal,pk4errgal,pk0errdens,pk2errdens,pk4errdens,pk0errcross,pk2errcross,pk4errcross,pk0modgal,pk2modgal,pk4modgal,pk0moddens,pk2moddens,pk4moddens,pk0modcross,pk2modcross,pk4modcross,pk0congal,pk2congal,pk4congal,pk0condens,pk2condens,pk4condens,pk0concross,pk2concross,pk4concross,nmodes,pkdiagerr)
+  ncase = 3
+  labelcase = ['$P_{gg}$','$P_{TT}$','$P_{gT}$']
+  pk0case,pk0errcase,pk0concase,pk2case,pk2errcase,pk2concase,pk4case,pk4errcase,pk4concase = np.empty((ncase,nkbin)),np.empty((ncase,nkbin)),np.empty((ncase,nkbin)),np.empty((ncase,nkbin)),np.empty((ncase,nkbin)),np.empty((ncase,nkbin)),np.empty((ncase,nkbin)),np.empty((ncase,nkbin)),np.empty((ncase,nkbin))
+  pk0case[0,:],pk0errcase[0,:],pk0concase[0,:] = pk0gal,pk0errgal,pk0congal
+  pk2case[0,:],pk2errcase[0,:],pk2concase[0,:] = pk2gal,pk2errgal,pk2congal
+  pk4case[0,:],pk4errcase[0,:],pk4concase[0,:] = pk4gal,pk4errgal,pk4congal
+  pk0case[1,:],pk0errcase[1,:],pk0concase[1,:] = pk0dens,pk0errdens,pk0condens
+  pk2case[1,:],pk2errcase[1,:],pk2concase[1,:] = pk2dens,pk2errdens,pk2condens
+  pk4case[1,:],pk4errcase[1,:],pk4concase[1,:] = pk4dens,pk4errdens,pk4condens
+  pk0case[2,:],pk0errcase[2,:],pk0concase[2,:] = pk0cross,pk0errcross,pk0concross
+  pk2case[2,:],pk2errcase[2,:],pk2concase[2,:] = pk2cross,pk2errcross,pk2concross
+  pk4case[2,:],pk4errcase[2,:],pk4concase[2,:] = pk4cross,pk4errcross,pk4concross
+  pktools.plotpkpole(kmin,kmax,nkbin,pk0case,pk0errcase,pk0concase,pk2case,pk2errcase,pk2concase,pk4case,pk4errcase,pk4concase,labelcase)
+
   return
