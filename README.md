@@ -54,11 +54,13 @@ The python libraries needed to run the functions are:
 
 * astropy
 
+* matplotlib
+
 * numpy_indexed
 
 The other accompanying files are:
 
-* GiggleZ_z0pt000_dark_subsample.ascii -- dark matter subsample of the 
+* GiggleZ_z0pt000_dark_subsample.ascii.gz -- dark matter subsample of the 
 GiggleZ N-body simulation, used to produce the example mock datasets.
 
 * pkcambhalofit_zeq0_gigglez.dat -- CAMB halofit model power spectrum 
@@ -67,8 +69,5 @@ with the same fiducial cosmology as GiggleZ.
 * pixwin_nside128.dat -- healpix window function for nside=128 (extended 
 to higher multipoles than provided with healpix).
 
-* pkpole_runspherpk.dat -- power spectrum output file for default run of 
-runspherpk.py.
-
 * pkpole_runspherpk.png -- plot of power spectrum model and measurements 
-for the default run.
+for the default run, produced by the code.

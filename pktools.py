@@ -2,6 +2,7 @@ import sys
 import numpy as np
 from scipy.integrate import quad
 from scipy.special import sph_harm
+import matplotlib.pyplot as plt
 
 ########################################################################
 # Obtain model RSD power spectrum.                                     #
@@ -744,43 +745,52 @@ def pkcrossvarint(mu,stat1,stat2,l1,l2,pk0gal,pk2gal,pk4gal,pk0dens,pk2dens,pk4d
     norm2 = 9.*leg4
   return norm1*norm2*pkvar
 
-def writepolecross(pkfile,kmin,kmax,nkbin,ngal1,ngal2,nx,ny,nz,pk01,pk21,pk41,pk02,pk22,pk42,pk0c,pk2c,pk4c,pk0err1,pk2err1,pk4err1,pk0err2,pk2err2,pk4err2,pk0errc,pk2errc,pk4errc,pk0mod1,pk2mod1,pk4mod1,pk0mod2,pk2mod2,pk4mod2,pk0modc,pk2modc,pk4modc,pk0con1,pk2con1,pk4con1,pk0con2,pk2con2,pk4con2,pk0conc,pk2conc,pk4conc,nmodes,pkdiagerr):
-  print '\nWriting out multipole cross-power spectra...'
-  nbin = 9*nkbin
+########################################################################
+# Plot multipole power spectra.                                        #
+########################################################################
+
+def plotpkpole(kmin,kmax,nkbin,pk0case,pk0errcase,pk0concase,pk2case,pk2errcase,pk2concase,pk4case,pk4errcase,pk4concase,labelcase):
+  ncase = pk0case.shape[0]
   dk = (kmax-kmin)/nkbin
+  ks = 0.01*(kmax-kmin)
   kbin = np.linspace(kmin+0.5*dk,kmax-0.5*dk,nkbin)
-  pkngpcorr = np.ones(nkbin)
-  f = open(pkfile,'w')
-  f.write('{} {} {} {} {} {} {} {}'.format(kmin,kmax,nkbin,ngal1,ngal2,nx,ny,nz) + '\n')
-  l = 0
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(i+1,l,kbin[i],pk01[i],pk0err1[i],pk0mod1[i],pk0con1[i],pkngpcorr[i],nmodes[i]) + '\n')
-  l = 2
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(nkbin+i+1,l,kbin[i],pk21[i],pk2err1[i],pk2mod1[i],pk2con1[i],pkngpcorr[i],nmodes[i]) + '\n')
-  l = 4
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(2*nkbin+i+1,l,kbin[i],pk41[i],pk4err1[i],pk4mod1[i],pk4con1[i],pkngpcorr[i],nmodes[i]) + '\n')
-  l = 0
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(3*nkbin+i+1,l,kbin[i],pk02[i],pk0err2[i],pk0mod2[i],pk0con2[i],pkngpcorr[i],nmodes[i]) + '\n')
-  l = 2
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(4*nkbin+i+1,l,kbin[i],pk22[i],pk2err2[i],pk2mod2[i],pk2con2[i],pkngpcorr[i],nmodes[i]) + '\n')
-  l = 4
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(5*nkbin+i+1,l,kbin[i],pk42[i],pk4err2[i],pk4mod2[i],pk4con2[i],pkngpcorr[i],nmodes[i]) + '\n')
-  l = 0
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(6*nkbin+i+1,l,kbin[i],pk0c[i],pk0errc[i],pk0modc[i],pk0conc[i],pkngpcorr[i],nmodes[i]) + '\n')
-  l = 2
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(7*nkbin+i+1,l,kbin[i],pk2c[i],pk2errc[i],pk2modc[i],pk2conc[i],pkngpcorr[i],nmodes[i]) + '\n')
-  l = 4
-  for i in range(nkbin):
-    f.write('{} {} {} {} {} {} {} {} {}'.format(8*nkbin+i+1,l,kbin[i],pk4c[i],pk4errc[i],pk4modc[i],pk4conc[i],pkngpcorr[i],nmodes[i]) + '\n')
-  for i in range(nbin):
-    for j in range(nbin):
-      f.write('{} {} {} {}'.format(i+1,j+1,pkdiagerr[i,j],pkdiagerr[i,j]) + '\n')
-  f.close()
+  norm = kbin
+  fig = plt.figure()
+  colorlst = ['black','red','green']
+# P_0(k)
+  plt.subplot(231)
+  ymin,ymax = 0.,1000.
+  plt.ylabel(r'$k \, P_0(k) \, [h^{-2} \, {\rm Mpc}^2]$')
+  for icase in range(ncase):
+    plt.plot(kbin,norm*pk0concase[icase,:],color=colorlst[icase])
+    plt.errorbar(kbin+ks*icase,norm*pk0case[icase,:],yerr=norm*pk0errcase[icase,:],linestyle='None',color=colorlst[icase],label=labelcase[icase])
+  plt.xticks([0.,0.1,0.2,0.3])
+  plt.xlabel(r'$k \, [h \, {\rm Mpc}^{-1}]$')
+  plt.xlim(kmin,kmax)
+  plt.ylim(ymin,ymax)
+  plt.legend(prop={'size':10})
+# P_2(k)
+  plt.subplot(232)
+  ymin,ymax = 0.,700.
+  plt.ylabel(r'$k \, P_2(k) \, [h^{-2} \, {\rm Mpc}^2]$')
+  for icase in range(ncase):
+    plt.plot(kbin,norm*pk2concase[icase,:],color=colorlst[icase])
+    plt.errorbar(kbin+ks*icase,norm*pk2case[icase,:],yerr=norm*pk2errcase[icase,:],linestyle='None',color=colorlst[icase])
+  plt.xticks([0.,0.1,0.2,0.3])
+  plt.xlabel(r'$k \, [h \, {\rm Mpc}^{-1}]$')
+  plt.xlim(kmin,kmax)
+  plt.ylim(ymin,ymax)
+# P_4(k)
+  plt.subplot(233)
+  ymin,ymax = -300.,300.
+  plt.ylabel(r'$k \, P_4(k) \, [h^{-2} \, {\rm Mpc}^2]$')
+  for icase in range(ncase):
+    plt.plot(kbin,norm*pk4concase[icase,:],color=colorlst[icase])
+    plt.errorbar(kbin+ks*icase,norm*pk4case[icase,:],yerr=norm*pk4errcase[icase,:],linestyle='None',color=colorlst[icase])
+  plt.xticks([0.,0.1,0.2,0.3])
+  plt.xlabel(r'$k \, [h \, {\rm Mpc}^{-1}]$')
+  plt.xlim(kmin,kmax)
+  plt.ylim(ymin,ymax)
+  fig.tight_layout()
+  fig.savefig('pkpole_runspherpk.png',bbox_inches='tight')
   return
