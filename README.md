@@ -3,10 +3,10 @@ This package is a set of python functions to measure and model the auto-
 and cross-power spectrum multipoles of galaxy catalogues and radio 
 intensity maps presented in spherical co-ordinates.
 
-This package accompanies the paper "3D power spectrum analysis of galaxy 
-and intensity maps including observational effects".
+This package accompanies the paper "Power spectrum modelling of galaxy 
+and radio intensity maps including observational effects".
 
-[astro-ph link to be included when available]
+https://arxiv.org/abs/1902.07439
 
 We assume that the galaxy catalogue is a set of discrete points, and the 
 radio intensity map is a pixelized continuous field which includes:
