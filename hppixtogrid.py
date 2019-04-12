@@ -6,6 +6,7 @@
 # nzbin -- number of redshift bins of input map                        #
 # nside -- healpix resolution                                          #
 # denshpz[nzbin,npix] -- (redshift, healpix) data map                  #
+# winhpz[nzbin,npix] -- (redshift, healpix) window function            #
 # ipixlst[npix] -- list of healpix pixel IDs in the map                #
 # zlims[nzbin+1] -- redshift values of bin divisions                   #
 # dobound -- take centre of field as (rmin+rmax)/2,(dmin+dmax)/2?      #
@@ -18,7 +19,7 @@
 #                                                                      #
 # Returns:                                                             #
 # densgrid -- density map in (x,y,z) binning                           #
-# wingrid -- (0,1) coverage map in (x,y,z) binning                     #
+# wingrid -- window function in (x,y,z) binning                        #
 #                                                                      #
 # Original code by Chris Blake (cblake@swin.edu.au).                   #
 ########################################################################
@@ -28,9 +29,9 @@ import numpy_indexed as npi
 import healpy as hp
 import boxtools
 
-def hppixtogrid(nzbin,nside,denshpz,ipixlst,zlims,dobound,rmin,rmax,dmin,dmax,nx,ny,nz,lx,ly,lz,x0,y0,z0,cosmo):
+def hppixtogrid(nzbin,nside,denshpz,winhpz,ipixlst,zlims,dobound,rmin,rmax,dmin,dmax,nx,ny,nz,lx,ly,lz,x0,y0,z0,cosmo):
   rsets = 10       # Number of random sets to average
-  nran = 5000000   # Number of points in each random set
+  nran = 10000000  # Number of points in each random set
   npix = len(ipixlst)
   print '\nMapping (healpix,redshift) binning to (x,y,z) binning...'
   print 'Healpix grid with nzbin =',nzbin,'npix =',npix,'ntot =',nzbin*npix
@@ -38,7 +39,7 @@ def hppixtogrid(nzbin,nside,denshpz,ipixlst,zlims,dobound,rmin,rmax,dmin,dmax,nx
   print 'Sampling with random points...'
   print 'rsets =',rsets
   print 'nran =',nran
-  countgrid,densgrid,wingrid = np.zeros((nzbin,npix)),np.zeros((nx,ny,nz)),np.zeros((nx,ny,nz))
+  countgrid,densgrid,wingrid,maskgrid = np.zeros((nzbin,npix)),np.zeros((nx,ny,nz)),np.zeros((nx,ny,nz)),np.zeros((nx,ny,nz))
   for iset in range(rsets):
     print 'Generating random set',iset+1,'...'
 # Generate random points in cuboid
@@ -57,19 +58,22 @@ def hppixtogrid(nzbin,nside,denshpz,ipixlst,zlims,dobound,rmin,rmax,dmin,dmax,nx
 # Re-index pixels to run from 1 to len(ipixlst)
     ipix = npi.indices(ipixlst,ipix)
 # Count numbers in each (healpix,redshift) cell
-    tempgrid,edges = np.histogramdd(np.vstack([izbin,ipix]).transpose(),bins=(nzbin,npix))
+    tempgrid,edges = np.histogramdd(np.vstack([izbin+0.5,ipix+0.5]).transpose(),bins=(nzbin,npix))
     countgrid += tempgrid
 # Bin densities in each (x,y,z) cell
     rdens = denshpz[izbin,ipix]
     tempgrid,edges = np.histogramdd(np.vstack([rxpos,rypos,rzpos]).transpose(),bins=(nx,ny,nz),range=((0.,lx),(0.,ly),(0.,lz)),normed=False,weights=rdens)
     densgrid += tempgrid
+# Bin window in each (x,y,z) cell
+    rwin = winhpz[izbin,ipix]
+    tempgrid,edges = np.histogramdd(np.vstack([rxpos,rypos,rzpos]).transpose(),bins=(nx,ny,nz),range=((0.,lx),(0.,ly),(0.,lz)),normed=False,weights=rwin)
+    wingrid += tempgrid
 # Count numbers in each (x,y,z) cell
     tempgrid,edges = np.histogramdd(np.vstack([rxpos,rypos,rzpos]).transpose(),bins=(nx,ny,nz),range=((0.,lx),(0.,ly),(0.,lz)))
-    wingrid += tempgrid
+    maskgrid += tempgrid
   print 'Number of randoms in healpix grid mean =',np.mean(countgrid),'std =',np.std(countgrid),'nullfrac =',float(len(countgrid[countgrid == 0]))/float(nzbin*len(ipixlst))
-  print 'Number of randoms in cuboid grid mean =',np.mean(wingrid[wingrid>0.]),'std =',np.std(wingrid[wingrid>0.])
-# Average densities on (x,y,z) grid
-  densgrid = np.where(wingrid>0.,densgrid/wingrid,0.)
-# Determine (0,1) window function on (x,y,z) grid
-  wingrid = np.where(wingrid>0.,1.,0.)
+  print 'Number of randoms in cuboid grid mean =',np.mean(maskgrid[maskgrid>0.]),'std =',np.std(maskgrid[maskgrid>0.])
+# Average densities and window on (x,y,z) grid
+  densgrid = np.where(maskgrid>0.,densgrid/maskgrid,0.)
+  wingrid = np.where(maskgrid>0.,wingrid/maskgrid,0.)
   return densgrid,wingrid

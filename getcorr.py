@@ -14,6 +14,7 @@ import pktools
 # wingrid -- [0,1] array of window function (for volume-averaging)     #
 # lwin,pixwin -- pixel window function array                           #
 # dzbin -- width of redshift bins                                      #
+# dobeam -- include telescope beam in model                            #
 # sigdeg -- standard deviation of Gaussian beam [degrees]              #
 # kmax -- maximum wavenumber required                                  #
 # kmod,pkmod -- power spectrum array [k in h/Mpc, P in (Mpc/h)^3]      #
@@ -24,16 +25,18 @@ import pktools
 # cosmo -- astropy fiducial cosmology                                  #
 #                                                                      #
 # Returns:                                                             #
-# hpcorrspec -- power spectrum correction on FFT grid                  #
+# dampcorrspec -- power spectrum correction on FFT grid                #
 #                                                                      #
 # Original code by Chris Blake (cblake@swin.edu.au).                   #
 ########################################################################
 
-def gethpcorr(docross,nx,ny,nz,lx,ly,lz,x0,y0,z0,wingrid,lwin,pixwin,dzbin,sigdeg,kmax,kmod,pkmod,beta,sigv,b,pknoise,cosmo):
+def getdampcorr(docross,nx,ny,nz,lx,ly,lz,x0,y0,z0,wingrid,lwin,pixwin,dzbin,dobeam,sigdeg,kmax,kmod,pkmod,beta,sigv,b,pknoise,cosmo):
   print '\nCalculating (healpix,redshift) gridding correction...'
   print 'docross =','{:1d}'.format(docross)
   print 'dzbin =',dzbin
-  print 'sigdeg =',sigdeg
+  print 'dobeam =','{:1d}'.format(dobeam)
+  if (dobeam):
+    print 'sigdeg =',sigdeg
 # If a sum over aliased k-modes is used, this sum is over k + n*k_Nyq where
 # n is in the range [-nmax,+nmax].  If nmax=0, the correction is evaluated
 # at the wavenumber k, without summing over additional modes
@@ -67,7 +70,10 @@ def gethpcorr(docross,nx,ny,nz,lx,ly,lz,x0,y0,z0,wingrid,lwin,pixwin,dzbin,sigde
 # of a Gaussian, i.e. another Gaussian
   vmax,nvarr = 20.,2000
   varr = np.linspace(0.,vmax,nvarr)
-  beamperparr = np.exp(-0.5*(varr**2))
+  if (dobeam):
+    beamperparr = np.exp(-0.5*(varr**2))
+  else:
+    beamperparr = np.ones(nvarr)
 # Check that we are generating these arrays across a sufficient range to
 # compute the smoothing correction
   nyqx,nyqy,nyqz = nx*np.pi/lx,ny*np.pi/ly,nz*np.pi/lz
@@ -91,7 +97,7 @@ def gethpcorr(docross,nx,ny,nz,lx,ly,lz,x0,y0,z0,wingrid,lwin,pixwin,dzbin,sigde
   nkfull,nkgen,nmugen = int(kmaxfull/dk)+2,int(kmaxgen/dk)+2,11
   kmaxfull,dmu = dk*(nkfull-1),1./float(nmugen-1)
   karr,muarr = np.linspace(0.,kmaxfull,nkfull),np.linspace(0.,1.,nmugen)
-  hpwinarr = np.ones((nkfull,nmugen))
+  pkdamparr = np.ones((nkfull,nmugen))
   print 'Pre-computing (k,mu) correction...'
   print 'nk  =',nkgen,'dk  =',dk
   print 'nmu =',nmugen,'dmu =',dmu
@@ -101,25 +107,25 @@ def gethpcorr(docross,nx,ny,nz,lx,ly,lz,x0,y0,z0,wingrid,lwin,pixwin,dzbin,sigde
       k,mu = karr[ik],muarr[imu]
       kperp,kpar = k*np.sqrt(1.-(mu**2)),k*mu
       if (docross):
-        hpwin = hpwincross(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,varr,beamperparr)
+        pkdamp = pkdampcross(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,varr,beamperparr)
       else:
-        hpwin = hpwinauto(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,varr,beamperparr)
-      hpwinarr[ik,imu] = hpwin
+        pkdamp = pkdampauto(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,varr,beamperparr)
+      pkdamparr[ik,imu] = pkdamp
 # Apply the correction to the full FFT grid
   print 'Applying (k,mu) correction...'
   kx = 2.*np.pi*np.fft.fftfreq(nx,d=lx/nx)
   ky = 2.*np.pi*np.fft.fftfreq(ny,d=ly/ny)
   kz = 2.*np.pi*np.fft.fftfreq(nz,d=lz/nz)[:nz/2+1]
 # Determine using sum over modes
-  hpcorrspec = dohpcorrsum(nmax,nx,ny,nz,nyqx,nyqy,nyqz,kx[:,np.newaxis,np.newaxis],ky[np.newaxis,:,np.newaxis],kz[np.newaxis,np.newaxis,:],docross,kmod,pkmod,beta,sigv,b,pknoise,karr,muarr,hpwinarr)
-  hpcorrspec = np.reshape(hpcorrspec,(nx,ny,nz/2+1))
-  return hpcorrspec
+  pkdampspec = dodampcorrsum(nmax,nx,ny,nz,nyqx,nyqy,nyqz,kx[:,np.newaxis,np.newaxis],ky[np.newaxis,:,np.newaxis],kz[np.newaxis,np.newaxis,:],docross,kmod,pkmod,beta,sigv,b,pknoise,karr,muarr,pkdamparr)
+  pkdampspec = np.reshape(pkdampspec,(nx,ny,nz/2+1))
+  return pkdampspec
 
 ########################################################################
 # Volume-averaged correction for auto-power spectrum.                  #
 ########################################################################
 
-def hpwinauto(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,varr,beamperparr):
+def pkdampauto(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,varr,beamperparr):
   pixperp = np.interp(kperp*rgrid,lwin,pixwin)
   pixpar = np.interp(kpar*drgrid,uarr,pixpararr)
   beamperp = np.interp(kperp*sigperpgrid,varr,beamperparr)
@@ -129,7 +135,7 @@ def hpwinauto(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,var
 # Volume-averaged correction for cross-power spectrum.                 #
 ########################################################################
 
-def hpwincross(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,varr,beamperparr):
+def pkdampcross(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,varr,beamperparr):
   pixperp = np.interp(kperp*rgrid,lwin,pixwin)
   pixpar = np.interp(kpar*drgrid,uarr,pixpararr)
   beamperp = np.interp(kperp*sigperpgrid,varr,beamperparr)
@@ -139,15 +145,14 @@ def hpwincross(kperp,kpar,rgrid,lwin,pixwin,drgrid,uarr,pixpararr,sigperpgrid,va
 # Sum correction for FFT grid aliasing.                                # 
 ########################################################################
 
-def dohpcorrsum(nmax,nx,ny,nz,nyqx,nyqy,nyqz,kx,ky,kz,docross,kmod,pkmod,beta,sigv,b,pknoise,karr,muarr,hpwinarr):
+def dodampcorrsum(nmax,nx,ny,nz,nyqx,nyqy,nyqz,kx,ky,kz,docross,kmod,pkmod,beta,sigv,b,pknoise,karr,muarr,pkdamparr):
   domu = True
   k = np.sqrt((kx**2)+(ky**2)+(kz**2))
   mu = np.divide(np.absolute(kx),k,out=np.zeros_like(k),where=k!=0.)
   if (docross):
     pk = pktools.getpkcrossmod(k,domu,mu,kmod,pkmod,beta,beta,sigv,b,b)
   else:
-    pk = pktools.getpkmod(k,domu,mu,kmod,pkmod,beta,sigv,b)
-    pk += pknoise*np.ones_like(k)
+    pk = pktools.getpkmod(k,domu,mu,kmod,pkmod,beta,sigv,b,pknoise)
   sum1 = 0.
   for ix in range(-nmax,nmax+1):
     for iy in range(-nmax,nmax+1):
@@ -160,42 +165,41 @@ def dohpcorrsum(nmax,nx,ny,nz,nyqx,nyqy,nyqz,kx,ky,kz,docross,kmod,pkmod,beta,si
         if (docross):
           pk1 = pktools.getpkcrossmod(k1,domu,mu1,kmod,pkmod,beta,beta,sigv,b,b)
         else:
-          pk1 = pktools.getpkmod(k1,domu,mu1,kmod,pkmod,beta,sigv,b)
-          pk1 += pknoise*np.ones_like(k1)
+          pk1 = pktools.getpkmod(k1,domu,mu1,kmod,pkmod,beta,sigv,b,pknoise)
         qx1,qy1,qz1 = (np.pi*kx1)/(2.*nyqx),(np.pi*ky1)/(2.*nyqy),(np.pi*kz1)/(2.*nyqz)
         wx = np.divide(np.sin(qx1),qx1,out=np.ones_like(qx1),where=qx1!=0.)
         wy = np.divide(np.sin(qy1),qy1,out=np.ones_like(qy1),where=qy1!=0.)
         wz = np.divide(np.sin(qz1),qz1,out=np.ones_like(qz1),where=qz1!=0.)
         ngpwin = (wx*wy*wz)**2
         points = np.vstack([k1.flatten(),mu1.flatten()]).transpose()
-        hpwin = interpn((karr,muarr),hpwinarr,points)
-        hpwin = np.reshape(hpwin,(nx,ny,nz/2+1))
-        sum1 += ngpwin*hpwin*pk1
+        pkdamp = interpn((karr,muarr),pkdamparr,points)
+        pkdamp = np.reshape(pkdamp,(nx,ny,nz/2+1))
+        sum1 += ngpwin*pkdamp*pk1
   return sum1/pk
 
 ########################################################################
 # Obtain correction to model power spectrum from NGP assignment.       #
 ########################################################################
 
-def getngpcorr(nx,ny,nz,lx,ly,lz,kmod,pkmod,beta,sigv,b):
+def getngpcorr(nx,ny,nz,lx,ly,lz,kmod,pkmod,beta,sigv,b,pknoise):
   print '\nCalculating NGP gridding correction...'
   nmax = 1
   nyqx,nyqy,nyqz = nx*np.pi/lx,ny*np.pi/ly,nz*np.pi/lz
   kx = 2.*np.pi*np.fft.fftfreq(nx,d=lx/nx)
   ky = 2.*np.pi*np.fft.fftfreq(ny,d=ly/ny)
   kz = 2.*np.pi*np.fft.fftfreq(nz,d=lz/nz)[:nz/2+1]
-  ngpcorrspec = dongpcorrsum(nmax,nyqx,nyqy,nyqz,kx[:,np.newaxis,np.newaxis],ky[np.newaxis,:,np.newaxis],kz[np.newaxis,np.newaxis,:],kmod,pkmod,beta,sigv,b)
+  ngpcorrspec = dongpcorrsum(nmax,nyqx,nyqy,nyqz,kx[:,np.newaxis,np.newaxis],ky[np.newaxis,:,np.newaxis],kz[np.newaxis,np.newaxis,:],kmod,pkmod,beta,sigv,b,pknoise)
   return ngpcorrspec
 
 ########################################################################
 # Sum correction for FFT grid aliasing.                                # 
 ########################################################################
 
-def dongpcorrsum(nmax,nyqx,nyqy,nyqz,kx,ky,kz,kmod,pkmod,beta,sigv,b):
+def dongpcorrsum(nmax,nyqx,nyqy,nyqz,kx,ky,kz,kmod,pkmod,beta,sigv,b,pknoise):
   domu = True
   k = np.sqrt((kx**2)+(ky**2)+(kz**2))
   mu = np.divide(kx,k,out=np.zeros_like(k),where=k!=0.)
-  pk = pktools.getpkmod(k,domu,mu,kmod,pkmod,beta,sigv,b)
+  pk = pktools.getpkmod(k,domu,mu,kmod,pkmod,beta,sigv,b,pknoise)
   sum1 = 0.
   for ix in range(-nmax,nmax+1):
     for iy in range(-nmax,nmax+1):
@@ -205,7 +209,7 @@ def dongpcorrsum(nmax,nyqx,nyqy,nyqz,kx,ky,kz,kmod,pkmod,beta,sigv,b):
         kz1 = kz + 2.*nyqz*iz
         k1 = np.sqrt((kx1**2)+(ky1**2)+(kz1**2))
         mu1 = np.divide(kx1,k1,out=np.zeros_like(k1),where=k1!=0.)
-        pk1 = pktools.getpkmod(k1,domu,mu1,kmod,pkmod,beta,sigv,b)
+        pk1 = pktools.getpkmod(k1,domu,mu1,kmod,pkmod,beta,sigv,b,pknoise)
         qx1,qy1,qz1 = (np.pi*kx1)/(2.*nyqx),(np.pi*ky1)/(2.*nyqy),(np.pi*kz1)/(2.*nyqz)
         wx = np.divide(np.sin(qx1),qx1,out=np.ones_like(qx1),where=qx1!=0.)
         wy = np.divide(np.sin(qy1),qy1,out=np.ones_like(qy1),where=qy1!=0.)

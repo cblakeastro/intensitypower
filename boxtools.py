@@ -18,7 +18,10 @@ def boxsize(redmin,redmax,dobound,rmin,rmax,dmin,dmax,cosmo):
     decrlst = np.array([dminr,dcenr,dmaxr])
     distlst = np.array([distmin,distmax])
   else:
-    rasrlst = np.radians([0.,90.,180.,270])
+    if ((rmax-rmin) > 180.):
+      rasrlst = np.radians([0.,90.,180.,270])
+    else:
+      rasrlst = np.radians([rmin,rmax])
     decrlst = np.array([dminr,0.,dmaxr])
     distlst = np.array([distmax])
   nras = len(rasrlst)
@@ -38,7 +41,10 @@ def boxsize(redmin,redmax,dobound,rmin,rmax,dmin,dmax,cosmo):
   zmin,zmax = np.amin(zlst),np.amax(zlst)
   lx,ly,lz = xmax-xmin,ymax-ymin,zmax-zmin
   x0,y0,z0 = -xmin,-ymin,-zmin
-  print '  ' + '{:4.2f}'.format(redmin) + ' < red  < ' + '{:4.2f}'.format(redmax)
+  print 'dobound =',dobound
+  print ' ' + '{:5.1f}'.format(rmin) + ' < RA   < ' + '{:4.1f}'.format(rmax)
+  print ' ' + '{:5.1f}'.format(dmin) + ' < Dec  < ' + '{:4.1f}'.format(dmax)
+  print ' ' + '{:5.2f}'.format(redmin) + ' < red  < ' + '{:4.2f}'.format(redmax)
   print '{:6.1f}'.format(distmin) + ' < dist < ' + '{:6.1f}'.format(distmax)
   print '{:7.1f}'.format(xmin) + ' < x < ' + '{:6.1f}'.format(xmax) + ' L_x = ' + '{:6.1f}'.format(lx) + ' x_0 = ' + '{:6.1f}'.format(x0)
   print '{:7.1f}'.format(ymin) + ' < y < ' + '{:6.1f}'.format(ymax) + ' L_y = ' + '{:6.1f}'.format(ly) + ' y_0 = ' + '{:6.1f}'.format(y0)
@@ -70,6 +76,51 @@ def readgiggquick():
   ndat = len(xpos)
   print ndat,'dark matter particles read in'
   return xpos,ypos,zpos,xvel,yvel,zvel,ndat
+
+########################################################################
+# Read in selection function.                                          #
+########################################################################
+
+def readwin(winfile,nx,ny,nz,lx,ly,lz):
+  print '\nReading in window function...'
+  print winfile
+  f = open(winfile,'r')
+  f.readline()
+  fields = f.readline().split()
+  nxwin,nywin,nzwin = int(fields[0]),int(fields[1]),int(fields[2])
+  lxwin,lywin,lzwin = float(fields[3]),float(fields[4]),float(fields[5])
+  if ((nxwin != nx) | (nywin != ny) | (nzwin != nz) | (np.abs(lxwin-lx) > 0.1) | (np.abs(lywin-ly) > 0.1) | (np.abs(lzwin-lz) > 0.1)):
+    print '** Window function file wrong size!!'
+    print nx,ny,nz,nxwin,nywin,nzwin
+    print lx,ly,lz,lxwin,lywin,lzwin
+    sys.exit()
+  if (len(fields) < 9):
+    f.readline()
+  wingrid = np.zeros(shape=(nx,ny,nz))
+  for iz in range(nz):
+    for iy in range(ny):
+      for ix in range(nx):
+        wingrid[ix,iy,iz] = float(f.readline())
+  f.close()
+  print 'Number of randoms =','{:.2e}'.format(np.sum(wingrid))
+  return wingrid
+
+########################################################################
+# Convert redshift / angular catalogue to (x,y,z) co-ordinates.        #
+########################################################################
+
+def getxyz(dobound,rmin,rmax,dmin,dmax,ras,dec,red,cosmo):
+  rasr,decr = np.radians(ras),np.radians(dec)
+  zarr = np.linspace(0.,2.,1000)
+  rarr = cosmo.comoving_distance(zarr).value
+  dist = np.interp(red,zarr,rarr)
+  if (dobound):
+    rcenr,dcenr = np.radians(0.5*(rmin+rmax)),np.radians(0.5*(dmin+dmax))
+    crcen,srcen = np.cos(rcenr),np.sin(rcenr)
+    cdcen,sdcen = np.cos(dcenr),np.sin(dcenr)
+    rasr,decr = dorot(rasr,decr,crcen,srcen,cdcen,sdcen)
+  xpos,ypos,zpos = xyzconv(dist,rasr,decr)
+  return xpos,ypos,zpos
 
 ########################################################################
 # Convert angles to new (ra,dec) centre.                               #
