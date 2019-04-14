@@ -687,7 +687,7 @@ def getpolecrossest(nx,ny,nz,lx,ly,lz,x0,y0,z0,kmin,kmax,nkbin,ngal,galgrid,weig
 # Estimate error in power spectrum multipoles.                         #
 ########################################################################
 
-def getpoleerr(vol,ngal,wmean,nkbin,pk0gal,pk2gal,pk4gal,pk0dens,pk2dens,pk4dens,pk0cross,pk2cross,pk4cross,nmodes):
+def getpoleerr(vol,ngal,vfrac,nkbin,pk0gal,pk2gal,pk4gal,pk0dens,pk2dens,pk4dens,pk0cross,pk2cross,pk4cross,nmodes):
   ndens = ngal/vol
   pkdiagerr = np.zeros((9*nkbin,9*nkbin))
   for ik in range(nkbin):
@@ -703,7 +703,7 @@ def getpoleerr(vol,ngal,wmean,nkbin,pk0gal,pk2gal,pk4gal,pk0dens,pk2dens,pk4dens
                 if ((istat == 0) & (jstat == 0)):
                   pkdiagerr[ibin,jbin] = np.sqrt(pkcrossvar/nmodes[ik])
                 else:
-                  pkdiagerr[ibin,jbin] = np.sqrt(pkcrossvar/(wmean*nmodes[ik]))
+                  pkdiagerr[ibin,jbin] = np.sqrt(pkcrossvar/(vfrac*nmodes[ik]))
   return pkdiagerr
 
 def pkcrossvarint(mu,stat1,stat2,l1,l2,pk0gal,pk2gal,pk4gal,pk0dens,pk2dens,pk4dens,pk0cross,pk2cross,pk4cross,ndens):

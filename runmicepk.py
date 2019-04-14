@@ -61,8 +61,8 @@ def main():
   ffid = cosmo.Om(zeff)**0.55
   betagal = ffid/bgal  # RSD distortion parameter of galaxy sample
   betadens = ffid/bdens# RSD distortion parameter of intensity sample
-  sigvgal = 260.       # Pairwise velocity dispersion of galaxies
-  sigvdens = 440.      # Pairwise velocity dispersion of HI
+  sigvgal = 260.       # Pairwise velocity dispersion of galaxies [km/s]
+  sigvdens = 440.      # Pairwise velocity dispersion of HI [km/s]
   pkmodfile = 'pkcambhalofit_zeq0pt4_mice.dat' # Model power spectrum
 
 ########################################################################

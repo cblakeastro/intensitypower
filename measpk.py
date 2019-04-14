@@ -157,7 +157,7 @@ def measpk(doconv,galgrid,wingridgal,densgrid,wingriddens,nx,ny,nz,lx,ly,lz,x0,y
 # Determine errors in the power spectrum multipoles.                   #
 ########################################################################
 
-  pkdiagerr = pktools.getpoleerr(vol,ngal,wmean,nkbin,pk0congal,pk2congal,pk4congal,pk0flatcondens,pk2flatcondens,pk4flatcondens,pk0concross,pk2concross,pk4concross,nmodes)
+  pkdiagerr = pktools.getpoleerr(vol,ngal,vfrac,nkbin,pk0congal,pk2congal,pk4congal,pk0flatcondens,pk2flatcondens,pk4flatcondens,pk0concross,pk2concross,pk4concross,nmodes)
   pk0errgal,pk2errgal,pk4errgal,pk0errdens,pk2errdens,pk4errdens,pk0errcross,pk2errcross,pk4errcross = np.zeros(nkbin),np.zeros(nkbin),np.zeros(nkbin),np.zeros(nkbin),np.zeros(nkbin),np.zeros(nkbin),np.zeros(nkbin),np.zeros(nkbin),np.zeros(nkbin)
   for ik in range(nkbin):
     pk0errgal[ik] = pkdiagerr[ik,ik]
